@@ -120,6 +120,16 @@ export async function generateDraftEmail(contactId: string): Promise<{ subject: 
   return handleResponse<{ subject: string; body: string }>(res);
 }
 
+// AI Assistant Chat API
+export async function sendChatMessage(message: string): Promise<{ answer: string; sources: string[] }> {
+  const res = await fetch(`${API_BASE_URL}/assistant/chat`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ message }),
+  });
+  return handleResponse<{ answer: string; sources: string[] }>(res);
+}
+
 // Notes API
 export async function fetchContactNotes(contactId: string): Promise<Note[]> {
   const res = await fetch(`${API_BASE_URL}/contacts/${contactId}/notes`, {

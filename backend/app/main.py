@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.db.session import engine, Base
-from app.routers import auth, contacts, deals
+from app.routers import auth, contacts, deals, assistant
 
 # Auto-create tables for local dev
 Base.metadata.create_all(bind=engine)
@@ -27,6 +27,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(contacts.router)
 app.include_router(deals.router)
+app.include_router(assistant.router)
 
 
 @app.get("/healthcheck", tags=["Health"])
