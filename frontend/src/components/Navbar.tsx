@@ -16,78 +16,82 @@ export default function Navbar() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     setToken(null);
-    router.push('/login');
+    window.location.href = '/login';
   };
 
+  // Hide Navbar completely on Login Page
   if (pathname === '/login') {
     return null;
   }
 
   return (
-    <nav className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-50 shadow-md">
+    <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        {/* Left Brand + Navigation Links */}
         <div className="flex items-center space-x-8">
-          <Link href="/dashboard" className="flex items-center space-x-2">
-            <span className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white p-2 rounded-lg font-bold text-lg">
+          <Link href="/dashboard" className="flex items-center space-x-3 group">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-500 flex items-center justify-center text-white font-black text-xs shadow-[0_0_15px_rgba(59,130,246,0.4)] group-hover:scale-105 transition-transform duration-200">
               CRM
-            </span>
-            <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-              Lite AI
+            </div>
+            <span className="font-extrabold text-sm tracking-tight text-white flex items-center gap-1">
+              CRM Lite <span className="text-xs px-1.5 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/30 text-blue-400 font-mono">AI</span>
             </span>
           </Link>
 
-          <div className="flex space-x-2">
+          <nav className="flex items-center space-x-1 bg-slate-900/60 border border-slate-800/80 p-1 rounded-xl">
             <Link
               href="/dashboard"
-              className={`px-3 py-2 rounded-md text-xs font-semibold transition-colors ${
-                pathname === '/dashboard' || pathname === '/'
-                  ? 'bg-slate-800 text-blue-400'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                pathname === '/dashboard'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
               }`}
             >
               Dashboard
             </Link>
             <Link
               href="/contacts"
-              className={`px-3 py-2 rounded-md text-xs font-semibold transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 pathname.startsWith('/contacts')
-                  ? 'bg-slate-800 text-blue-400'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
               }`}
             >
               Contacts
             </Link>
             <Link
               href="/deals"
-              className={`px-3 py-2 rounded-md text-xs font-semibold transition-colors ${
-                pathname.startsWith('/deals')
-                  ? 'bg-slate-800 text-blue-400'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                pathname === '/deals'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
               }`}
             >
               Pipeline (Kanban)
             </Link>
-          </div>
+          </nav>
         </div>
 
-        <div className="flex items-center space-x-4">
+        {/* Right Auth Action */}
+        <div>
           {token ? (
             <button
               onClick={handleLogout}
-              className="text-xs text-slate-400 hover:text-red-400 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-md transition-colors"
+              className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-semibold border border-slate-700/80 transition-all shadow-sm flex items-center space-x-1.5"
             >
-              Logout
+              <span>Log Out</span>
+              <span className="text-slate-500 text-xs">↳</span>
             </button>
           ) : (
             <Link
               href="/login"
-              className="text-xs bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2 rounded-md shadow transition-colors"
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md transition-all"
             >
-              Login
+              Sign In
             </Link>
           )}
         </div>
       </div>
-    </nav>
+    </header>
   );
 }
