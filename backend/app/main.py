@@ -3,9 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.db.session import engine, Base
-from app.routers import auth
+from app.routers import auth, contacts, deals
 
-# Initialize database tables for MVP development
+# Auto-create tables for local dev
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -25,6 +25,8 @@ app.add_middleware(
 
 # Include Routers
 app.include_router(auth.router)
+app.include_router(contacts.router)
+app.include_router(deals.router)
 
 
 @app.get("/healthcheck", tags=["Health"])
