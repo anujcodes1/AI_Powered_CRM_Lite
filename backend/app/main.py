@@ -15,11 +15,9 @@ app = FastAPI(
 )
 
 # Configure CORS for Vercel deployment and local development
-origins = settings.cors_origins
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins if origins else ["*"],
+    allow_origins=settings.cors_origins,
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
