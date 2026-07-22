@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -22,10 +23,13 @@ def signup(user_in: UserCreate, db: Session = Depends(get_db)):
     
     # Hash password and create User record
     hashed_pwd = get_password_hash(user_in.password)
+    now = datetime.now(timezone.utc)
     new_user = User(
         email=user_in.email.lower(),
         hashed_password=hashed_pwd,
-        full_name=user_in.full_name
+        full_name=user_in.full_name,
+        created_at=now,
+        updated_at=now
     )
     db.add(new_user)
     db.commit()
