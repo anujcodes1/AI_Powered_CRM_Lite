@@ -37,3 +37,8 @@ class ContactResponse(ContactBase):
 class ScoreResponse(BaseModel):
     lead_score: int
     ai_score_reason: str
+
+
+class EmailDraftResponse(BaseModel):
+    subject: str
+    body: str

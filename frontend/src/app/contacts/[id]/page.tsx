@@ -8,6 +8,7 @@ import {
   createContactNote,
   fetchContactActivities,
   recalculateContactScore,
+  generateDraftEmail,
 } from '../../../lib/api';
 import { Contact, Note, ActivityLog } from '../../../types';
 
@@ -26,6 +27,13 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
 
   // Score calculation state
   const [calculatingScore, setCalculatingScore] = useState(false);
+
+  // Email draft state & modal
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [generatingDraft, setGeneratingDraft] = useState(false);
+  const [draftSubject, setDraftSubject] = useState('');
+  const [draftBody, setDraftBody] = useState('');
+  const [copyFeedback, setCopyFeedback] = useState('');
 
   const loadAll = async () => {
     try {
@@ -84,6 +92,28 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
     }
   };
 
+  const handleGenerateDraft = async () => {
+    setGeneratingDraft(true);
+    setIsEmailModalOpen(true);
+    setCopyFeedback('');
+    try {
+      const draft = await generateDraftEmail(contactId);
+      setDraftSubject(draft.subject);
+      setDraftBody(draft.body);
+      await loadAll();
+    } catch (err) {
+      console.error('Failed to generate email draft:', err);
+    } finally {
+      setGeneratingDraft(false);
+    }
+  };
+
+  const handleCopy = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopyFeedback(`${label} copied to clipboard!`);
+    setTimeout(() => setCopyFeedback(''), 3000);
+  };
+
   if (loading) {
     return <div className="p-8 text-center text-xs text-slate-400">Loading contact details...</div>;
   }
@@ -131,22 +161,31 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
 
         {/* Action Controls & Tags */}
         <div className="flex flex-col items-start md:items-end space-y-3 shrink-0">
-          <button
-            onClick={handleRecalculateScore}
-            disabled={calculatingScore}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-4 py-2 rounded-xl shadow-md transition-all flex items-center space-x-2 disabled:opacity-50"
-          >
-            {calculatingScore ? (
-              <>
-                <span className="animate-spin text-sm">⚡</span>
-                <span>Calculating Score...</span>
-              </>
-            ) : (
-              <>
-                <span>⚡ Recalculate Score</span>
-              </>
-            )}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleGenerateDraft}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs px-3.5 py-2 rounded-xl shadow-md transition-all flex items-center space-x-1.5"
+            >
+              <span>✉️ Draft Follow-up Email</span>
+            </button>
+
+            <button
+              onClick={handleRecalculateScore}
+              disabled={calculatingScore}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-3.5 py-2 rounded-xl shadow-md transition-all flex items-center space-x-1.5 disabled:opacity-50"
+            >
+              {calculatingScore ? (
+                <>
+                  <span className="animate-spin text-sm">⚡</span>
+                  <span>Scoring...</span>
+                </>
+              ) : (
+                <>
+                  <span>⚡ Score Lead</span>
+                </>
+              )}
+            </button>
+          </div>
 
           <div className="flex flex-wrap gap-1.5">
             {contact.tags.map((tag) => (
@@ -233,6 +272,81 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       </div>
+
+      {/* AI Draft Email Modal */}
+      {isEmailModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center space-x-2">
+                  <span>✉️ AI Follow-up Email Generator</span>
+                </h3>
+                <p className="text-xs text-slate-400">Review and edit your personalized draft before copying</p>
+              </div>
+              <button onClick={() => setIsEmailModalOpen(false)} className="text-slate-400 hover:text-white text-lg">
+                ✕
+              </button>
+            </div>
+
+            {generatingDraft ? (
+              <div className="py-16 text-center space-y-3">
+                <div className="animate-spin text-3xl text-blue-400 inline-block">✨</div>
+                <p className="text-xs text-slate-300 font-medium">Analyzing contact history & drafting email...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {copyFeedback && (
+                  <div className="p-2.5 bg-emerald-950/80 border border-emerald-800 rounded-lg text-xs text-emerald-300 font-medium">
+                    ✓ {copyFeedback}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Subject Line</label>
+                  <input
+                    type="text"
+                    value={draftSubject}
+                    onChange={(e) => setDraftSubject(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Email Body (Editable)</label>
+                  <textarea
+                    rows={8}
+                    value={draftBody}
+                    onChange={(e) => setDraftBody(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 leading-relaxed"
+                  />
+                </div>
+
+                <div className="flex flex-wrap justify-between items-center gap-3 pt-3 border-t border-slate-800">
+                  <span className="text-[11px] text-slate-500">Note: Email is never sent automatically. Copy & paste into your email client.</span>
+                  
+                  <div className="flex space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(`Subject: ${draftSubject}\n\n${draftBody}`, 'Entire Email')}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-lg shadow transition-colors"
+                    >
+                      📋 Copy Entire Email
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEmailModalOpen(false)}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

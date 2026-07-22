@@ -112,6 +112,14 @@ export async function recalculateContactScore(contactId: string): Promise<{ lead
   return handleResponse<{ lead_score: number; ai_score_reason: string }>(res);
 }
 
+export async function generateDraftEmail(contactId: string): Promise<{ subject: string; body: string }> {
+  const res = await fetch(`${API_BASE_URL}/contacts/${contactId}/draft-email`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse<{ subject: string; body: string }>(res);
+}
+
 // Notes API
 export async function fetchContactNotes(contactId: string): Promise<Note[]> {
   const res = await fetch(`${API_BASE_URL}/contacts/${contactId}/notes`, {

@@ -10,10 +10,11 @@ from app.models.deal import Deal
 from app.models.note import Note
 from app.models.activity_log import ActivityLog
 from app.models.enums import ActivityType
-from app.schemas.contact import ContactCreate, ContactUpdate, ContactResponse, ScoreResponse
+from app.schemas.contact import ContactCreate, ContactUpdate, ContactResponse, ScoreResponse, EmailDraftResponse
 from app.schemas.note import NoteCreate, NoteResponse
 from app.schemas.activity_log import ActivityLogResponse
 from app.services.ai_scoring import calculate_ai_lead_score
+from app.services.ai_email import generate_ai_email_draft
 
 router = APIRouter(prefix="/contacts", tags=["Contacts"])
 
@@ -120,24 +121,19 @@ def calculate_contact_score(
     if not contact:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
 
-    # 1. Fetch recent notes (last 5)
     recent_notes_objs = db.query(Note).filter(Note.contact_id == contact_id, Note.user_id == current_user.id).order_by(Note.created_at.desc()).limit(5).all()
     recent_notes = [n.content for n in recent_notes_objs]
 
-    # 2. Fetch current deal stage if available
     deal = db.query(Deal).filter(Deal.contact_id == contact_id, Deal.user_id == current_user.id).order_by(Deal.updated_at.desc()).first()
     deal_stage = deal.stage.value if deal else "lead"
 
-    # 3. Calculate activity recency in days
     latest_activity = db.query(ActivityLog).filter(ActivityLog.contact_id == contact_id, ActivityLog.user_id == current_user.id).order_by(ActivityLog.timestamp.desc()).first()
     if latest_activity and latest_activity.timestamp:
-        # Handle naive vs timezone aware datetimes cleanly
         act_time = latest_activity.timestamp.replace(tzinfo=timezone.utc) if latest_activity.timestamp.tzinfo is None else latest_activity.timestamp
         days_since_last_activity = max(0, (datetime.now(timezone.utc) - act_time).days)
     else:
         days_since_last_activity = 0
 
-    # 4. Invoke LLM Service
     result = calculate_ai_lead_score(
         name=contact.name,
         company=contact.company,
@@ -146,11 +142,9 @@ def calculate_contact_score(
         recent_notes=recent_notes
     )
 
-    # 5. Persist score to DB
     contact.lead_score = result["score"]
     contact.ai_score_reason = result["reason"]
 
-    # 6. Log timeline activity
     log = ActivityLog(
         user_id=current_user.id,
         contact_id=contact.id,
@@ -162,6 +156,43 @@ def calculate_contact_score(
     db.refresh(contact)
 
     return ScoreResponse(lead_score=contact.lead_score, ai_score_reason=contact.ai_score_reason)
+
+
+@router.post("/{contact_id}/draft-email", response_model=EmailDraftResponse)
+def draft_followup_email(
+    contact_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """AI Endpoint: Generate a tailored follow-up email draft based on contact notes & deal stage."""
+    contact = db.query(Contact).filter(Contact.id == contact_id, Contact.user_id == current_user.id).first()
+    if not contact:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
+
+    recent_notes_objs = db.query(Note).filter(Note.contact_id == contact_id, Note.user_id == current_user.id).order_by(Note.created_at.desc()).limit(5).all()
+    recent_notes = [n.content for n in recent_notes_objs]
+
+    deal = db.query(Deal).filter(Deal.contact_id == contact_id, Deal.user_id == current_user.id).order_by(Deal.updated_at.desc()).first()
+    deal_stage = deal.stage.value if deal else "lead"
+
+    email_draft = generate_ai_email_draft(
+        name=contact.name,
+        company=contact.company,
+        deal_stage=deal_stage,
+        recent_notes=recent_notes
+    )
+
+    # Log activity on contact timeline
+    log = ActivityLog(
+        user_id=current_user.id,
+        contact_id=contact.id,
+        type=ActivityType.EMAIL,
+        description=f"AI Email draft generated: '{email_draft['subject']}'"
+    )
+    db.add(log)
+    db.commit()
+
+    return EmailDraftResponse(subject=email_draft["subject"], body=email_draft["body"])
 
 
 @router.get("/{contact_id}/notes", response_model=List[NoteResponse])
@@ -199,7 +230,6 @@ def create_contact_note(
     db.commit()
     db.refresh(note)
 
-    # Log corresponding activity
     activity = ActivityLog(
         user_id=current_user.id,
         contact_id=contact_id,
