@@ -5,7 +5,7 @@ from app.core.config import settings
 from app.db.session import engine, Base
 from app.routers import auth, contacts, deals, assistant
 
-# Auto-create tables for local dev
+# Auto-create database tables on startup
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -14,10 +14,13 @@ app = FastAPI(
     description="Backend REST API for AI Powered CRM Lite",
 )
 
-# Enable CORS for Next.js frontend
+# Configure CORS for Vercel deployment and local development
+origins = settings.cors_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=origins if origins else ["*"],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,6 +31,15 @@ app.include_router(auth.router)
 app.include_router(contacts.router)
 app.include_router(deals.router)
 app.include_router(assistant.router)
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    return {
+        "message": "Welcome to AI Powered CRM Lite API",
+        "docs": "http://127.0.0.1:8000/docs",
+        "healthcheck": "http://127.0.0.1:8000/healthcheck"
+    }
 
 
 @app.get("/healthcheck", tags=["Health"])
