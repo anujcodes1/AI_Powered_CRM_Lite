@@ -18,6 +18,7 @@ export interface Contact {
   company?: string;
   tags: string[];
   lead_score?: number;
+  ai_score_reason?: string;
   created_at: string;
   updated_at: string;
 }

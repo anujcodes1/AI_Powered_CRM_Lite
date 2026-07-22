@@ -2,7 +2,13 @@
 
 import React, { useEffect, useState, use } from 'react';
 import Link from 'next/link';
-import { fetchContact, fetchContactNotes, createContactNote, fetchContactActivities } from '../../../lib/api';
+import {
+  fetchContact,
+  fetchContactNotes,
+  createContactNote,
+  fetchContactActivities,
+  recalculateContactScore,
+} from '../../../lib/api';
 import { Contact, Note, ActivityLog } from '../../../types';
 
 export default function ContactDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -17,6 +23,9 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
   // Note form state
   const [noteContent, setNoteContent] = useState('');
   const [addingNote, setAddingNote] = useState(false);
+
+  // Score calculation state
+  const [calculatingScore, setCalculatingScore] = useState(false);
 
   const loadAll = async () => {
     try {
@@ -54,6 +63,27 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
     }
   };
 
+  const handleRecalculateScore = async () => {
+    setCalculatingScore(true);
+    try {
+      const res = await recalculateContactScore(contactId);
+      setContact((prev) =>
+        prev
+          ? {
+              ...prev,
+              lead_score: res.lead_score,
+              ai_score_reason: res.ai_score_reason,
+            }
+          : null
+      );
+      await loadAll();
+    } catch (err) {
+      console.error('Failed to recalculate score:', err);
+    } finally {
+      setCalculatingScore(false);
+    }
+  };
+
   if (loading) {
     return <div className="p-8 text-center text-xs text-slate-400">Loading contact details...</div>;
   }
@@ -78,27 +108,53 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
 
       {/* Header Profile Card */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center space-x-3">
+        <div className="space-y-2 flex-1">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold text-white tracking-tight">{contact.name}</h1>
-            <span className="bg-indigo-950 text-indigo-300 border border-indigo-800 font-bold px-2.5 py-0.5 rounded text-xs">
-              Score: {contact.lead_score ?? 0} / 100
+            <span className="bg-indigo-950 text-indigo-300 border border-indigo-800 font-bold px-3 py-1 rounded-lg text-xs flex items-center space-x-1.5">
+              <span>Score: {contact.lead_score ?? 0} / 100</span>
             </span>
           </div>
+
+          {contact.ai_score_reason && (
+            <p className="text-xs text-indigo-300/90 bg-indigo-950/40 border border-indigo-900/60 p-2.5 rounded-lg max-w-2xl">
+              💡 <span className="font-semibold">AI Reasoning:</span> {contact.ai_score_reason}
+            </p>
+          )}
+
           <p className="text-xs text-slate-400">{contact.company || 'Independent Contact'}</p>
-          <div className="flex flex-wrap gap-4 text-xs text-slate-300 pt-2">
+          <div className="flex flex-wrap gap-4 text-xs text-slate-300 pt-1">
             <span>📧 {contact.email}</span>
             {contact.phone && <span>📞 {contact.phone}</span>}
           </div>
         </div>
 
-        {/* Tags */}
-        <div className="flex flex-wrap gap-1.5">
-          {contact.tags.map((tag) => (
-            <span key={tag} className="bg-slate-800 text-blue-300 border border-slate-700 px-3 py-1 rounded-md text-xs">
-              {tag}
-            </span>
-          ))}
+        {/* Action Controls & Tags */}
+        <div className="flex flex-col items-start md:items-end space-y-3 shrink-0">
+          <button
+            onClick={handleRecalculateScore}
+            disabled={calculatingScore}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-4 py-2 rounded-xl shadow-md transition-all flex items-center space-x-2 disabled:opacity-50"
+          >
+            {calculatingScore ? (
+              <>
+                <span className="animate-spin text-sm">⚡</span>
+                <span>Calculating Score...</span>
+              </>
+            ) : (
+              <>
+                <span>⚡ Recalculate Score</span>
+              </>
+            )}
+          </button>
+
+          <div className="flex flex-wrap gap-1.5">
+            {contact.tags.map((tag) => (
+              <span key={tag} className="bg-slate-800 text-blue-300 border border-slate-700 px-3 py-1 rounded-md text-xs">
+                {tag}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 

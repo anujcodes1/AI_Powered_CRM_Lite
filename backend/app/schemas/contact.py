@@ -27,7 +27,13 @@ class ContactResponse(ContactBase):
     id: str
     user_id: str
     lead_score: Optional[int] = None
+    ai_score_reason: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ScoreResponse(BaseModel):
+    lead_score: int
+    ai_score_reason: str

@@ -104,6 +104,14 @@ export async function deleteContact(id: string): Promise<void> {
   return handleResponse<void>(res);
 }
 
+export async function recalculateContactScore(contactId: string): Promise<{ lead_score: number; ai_score_reason: string }> {
+  const res = await fetch(`${API_BASE_URL}/contacts/${contactId}/score`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse<{ lead_score: number; ai_score_reason: string }>(res);
+}
+
 // Notes API
 export async function fetchContactNotes(contactId: string): Promise<Note[]> {
   const res = await fetch(`${API_BASE_URL}/contacts/${contactId}/notes`, {

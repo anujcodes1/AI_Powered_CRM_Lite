@@ -17,6 +17,7 @@ class Contact(Base):
     company = Column(String(255), nullable=True)
     tags = Column(JSON, default=list, nullable=False)
     lead_score = Column(Integer, nullable=True)
+    ai_score_reason = Column(String(500), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime(timezone=True),
